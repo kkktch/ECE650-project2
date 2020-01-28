@@ -23,6 +23,7 @@ void conquerPrev(LinkList* currNode);
 void conquerNext(LinkList* currNode);
 
 void* ts_malloc_lock(size_t size) {
+    assert(size > 0);
     pthread_mutex_lock(&mutex);
     LinkList* currNode = HeadNode; // Start find appropriate node to allocate memory
     while (currNode != NULL) {
@@ -58,6 +59,7 @@ void* ts_malloc_lock(size_t size) {
 }
 
 void ts_free_lock(void* ptr) {
+    assert(ptr!=NULL);
     pthread_mutex_lock(&mutex);
     // Get current node
     LinkList* currNode = ptr - LLSIZE;
@@ -86,7 +88,9 @@ void* ts_malloc_nolock(size_t size) {
     }
     // If there is no such space, allocate a new node
     if (minNode == NULL) {
+      pthread_mutex_lock(&mutex);
         void* tmp = sbrk(size + LLSIZE);
+	pthread_mutex_unlock(&mutex);
         data_segment_size += size + LLSIZE;
         LinkList* Node = tmp;
         eraseNode(Node);
@@ -115,6 +119,7 @@ void ts_free_nolock(void* ptr) {
 }
 
 void eraseNode(LinkList* currNode){
+    assert(currNode != NULL);
     // Erase one node from memory
     currNode->nextNode = NULL;
     currNode->prevNode = NULL;
@@ -122,23 +127,31 @@ void eraseNode(LinkList* currNode){
 }
 
 void* deleteNode(LinkList* currNode){
+    assert(currNode != NULL);
     // Remove one node and make change to its adjacent node
     HeadNode = (currNode->prevNode == NULL) ? currNode->nextNode :
     (currNode->nextNode == NULL && currNode->prevNode == NULL) ? NULL : HeadNode;
     TailNode = (currNode->nextNode == NULL) ? currNode->prevNode :
     (currNode->nextNode == NULL && currNode->prevNode == NULL) ? NULL : TailNode;
     if (currNode->nextNode == NULL){
+        if (currNode->prevNode == NULL) {
+            return currNode->address;
+        }
         currNode->prevNode->nextNode = NULL;
     }
     else if (currNode->prevNode == NULL){
+        if (currNode->nextNode == NULL) {
+            return currNode->address;
+        }
         currNode->nextNode->prevNode = NULL;
     }
     else {
+        assert(currNode->prevNode != NULL);
+        assert(currNode->nextNode != NULL);
         currNode->prevNode->nextNode = currNode->nextNode;
         currNode->nextNode->prevNode = currNode->prevNode;
     }
     eraseNode(currNode);
-    data_segment_free_space_size -= currNode->size + LLSIZE;
     return currNode->address;
     
 }
