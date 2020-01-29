@@ -23,8 +23,11 @@ void conquerPrev(LinkList* currNode);
 void conquerNext(LinkList* currNode);
 
 void* ts_malloc_lock(size_t size) {
-    assert(size > 0);
+    if (size <= 0) {
+        return NULL;
+    }
     pthread_mutex_lock(&mutex);
+    void* res = NULL;
     LinkList* currNode = HeadNode; // Start find appropriate node to allocate memory
     while (currNode != NULL) {
         if (currNode->size < size) {
@@ -35,14 +38,14 @@ void* ts_malloc_lock(size_t size) {
             if (currNode->size < size + LLSIZE) {
                 // Space isn't enough to divide to 2 nodes, use the whole space directly
                 void* ans = deleteNode(currNode);
-                pthread_mutex_unlock(&mutex);
-                return ans;
+                res = ans;
+                break;
             }
             else {
                 // Space can be divided
                 void* ans = divide(currNode, size);
-                pthread_mutex_unlock(&mutex);
-                return ans;
+                res = ans;
+                break;
             }
         }
     }
@@ -53,13 +56,16 @@ void* ts_malloc_lock(size_t size) {
         eraseNode(Node);
         Node->size = size;
         Node->address = tmp + LLSIZE;
-        pthread_mutex_unlock(&mutex);
-        return Node->address;
+        res = Node->address;
     }
+    pthread_mutex_unlock(&mutex);
+    return res;
 }
 
 void ts_free_lock(void* ptr) {
-    assert(ptr!=NULL);
+    if (ptr == NULL) {
+        return;
+    }
     pthread_mutex_lock(&mutex);
     // Get current node
     LinkList* currNode = ptr - LLSIZE;
@@ -88,9 +94,7 @@ void* ts_malloc_nolock(size_t size) {
     }
     // If there is no such space, allocate a new node
     if (minNode == NULL) {
-      pthread_mutex_lock(&mutex);
         void* tmp = sbrk(size + LLSIZE);
-	pthread_mutex_unlock(&mutex);
         data_segment_size += size + LLSIZE;
         LinkList* Node = tmp;
         eraseNode(Node);
@@ -119,7 +123,6 @@ void ts_free_nolock(void* ptr) {
 }
 
 void eraseNode(LinkList* currNode){
-    assert(currNode != NULL);
     // Erase one node from memory
     currNode->nextNode = NULL;
     currNode->prevNode = NULL;
@@ -127,7 +130,9 @@ void eraseNode(LinkList* currNode){
 }
 
 void* deleteNode(LinkList* currNode){
-    assert(currNode != NULL);
+    if (currNode == NULL) {
+        return NULL;
+    }
     // Remove one node and make change to its adjacent node
     HeadNode = (currNode->prevNode == NULL) ? currNode->nextNode :
     (currNode->nextNode == NULL && currNode->prevNode == NULL) ? NULL : HeadNode;
@@ -135,28 +140,33 @@ void* deleteNode(LinkList* currNode){
     (currNode->nextNode == NULL && currNode->prevNode == NULL) ? NULL : TailNode;
     if (currNode->nextNode == NULL){
         if (currNode->prevNode == NULL) {
-            return currNode->address;
+            return NULL;
         }
         currNode->prevNode->nextNode = NULL;
     }
     else if (currNode->prevNode == NULL){
         if (currNode->nextNode == NULL) {
-            return currNode->address;
+            return NULL;
         }
         currNode->nextNode->prevNode = NULL;
     }
     else {
-        assert(currNode->prevNode != NULL);
-        assert(currNode->nextNode != NULL);
+        if (currNode->nextNode == NULL || currNode->prevNode == NULL) {
+            return NULL;
+        }
         currNode->prevNode->nextNode = currNode->nextNode;
         currNode->nextNode->prevNode = currNode->prevNode;
     }
     eraseNode(currNode);
+    data_segment_free_space_size -= currNode->size + LLSIZE;
     return currNode->address;
     
 }
 
 void* divide(LinkList* currNode, size_t size){
+    if (currNode == NULL) {
+        return NULL;
+    }
     // Divive a new node
     LinkList* newNode = currNode->address + size;
     data_segment_free_space_size -= size + LLSIZE;
@@ -179,6 +189,9 @@ void* divide(LinkList* currNode, size_t size){
 }
 
 void Traverse(LinkList* Node, int type){
+    if (Node == NULL) {
+        return;
+    }
     // Follow the list, find the best position to insert
     LinkList* currNode = NULL;
     if (type > 0) {
@@ -208,6 +221,9 @@ void Traverse(LinkList* Node, int type){
 }
 
 void insertNode(LinkList* Node, int type){
+    if (Node == NULL) {
+        return;
+    }
     // Insert the node based on the type
     if (type == 1) {
         HeadNode->prevNode = Node;
@@ -227,6 +243,9 @@ void insertNode(LinkList* Node, int type){
 }
 
 void addNode(LinkList* Node) {
+    if (Node == NULL) {
+        return;
+    }
     if (HeadNode == NULL && TailNode == NULL) {
         HeadNode = Node;
         TailNode = Node;
@@ -237,6 +256,9 @@ void addNode(LinkList* Node) {
 }
 
 void conquerPrev(LinkList* currNode){
+    if (currNode == NULL) {
+        return;
+    }
     // Conquer current node with its previous node
     currNode->prevNode->nextNode = currNode->nextNode;
     currNode->prevNode->size += currNode->size + LLSIZE;
@@ -250,6 +272,9 @@ void conquerPrev(LinkList* currNode){
 }
 
 void conquerNext(LinkList* currNode){
+    if (currNode == NULL) {
+        return;
+    }
     // Conquer current node with its next node
     currNode->size += currNode->nextNode->size + LLSIZE;
     if (currNode->nextNode->nextNode == NULL) {
@@ -264,6 +289,9 @@ void conquerNext(LinkList* currNode){
 }
 
 void conquer(LinkList* currNode) {
+    if (currNode == NULL) {
+        return;
+    }
     // First insert node then conquer with its adjacent node
     addNode(currNode);
     if (currNode != HeadNode && currNode->prevNode->size == (void*)currNode - currNode->prevNode->address && currNode->isFree == 1) {
