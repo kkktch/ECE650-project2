@@ -123,6 +123,7 @@ void ts_free_nolock(void* ptr) {
 }
 
 void eraseNode(LinkList* currNode){
+    assert(currNode != NULL);
     // Erase one node from memory
     currNode->nextNode = NULL;
     currNode->prevNode = NULL;
@@ -140,20 +141,17 @@ void* deleteNode(LinkList* currNode){
     (currNode->nextNode == NULL && currNode->prevNode == NULL) ? NULL : TailNode;
     if (currNode->nextNode == NULL){
         if (currNode->prevNode == NULL) {
-            return NULL;
+            return currNode->address;
         }
         currNode->prevNode->nextNode = NULL;
     }
     else if (currNode->prevNode == NULL){
         if (currNode->nextNode == NULL) {
-            return NULL;
+            return currNode->address;
         }
         currNode->nextNode->prevNode = NULL;
     }
     else {
-        if (currNode->nextNode == NULL || currNode->prevNode == NULL) {
-            return NULL;
-        }
         currNode->prevNode->nextNode = currNode->nextNode;
         currNode->nextNode->prevNode = currNode->prevNode;
     }
