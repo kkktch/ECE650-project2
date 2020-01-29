@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <pthread.h>
 
-
 static LinkList* HeadNode = NULL;
 static LinkList* TailNode = NULL;
 static unsigned long data_segment_size = 0;
